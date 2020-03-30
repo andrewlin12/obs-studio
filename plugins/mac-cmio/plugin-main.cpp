@@ -74,7 +74,14 @@ static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 static bool cmio_output_start(void *data)
 {
 	blog(LOG_INFO, "%s", "CMIO start");
-	return true;
+	virtual_out_data *out_data = (virtual_out_data *)data;
+	if (out_data) {
+		obs_output_begin_data_capture(out_data->output, 0);
+		blog(LOG_INFO, "%s", "CMIO output_begin_data_capture called");
+		return true;
+	}
+
+	return false;
 }
 
 static obs_properties_t *cmio_output_properties(void *unused)
@@ -86,9 +93,15 @@ static obs_properties_t *cmio_output_properties(void *unused)
 	return props;
 }
 
-static void cmio_output_raw_video(void *param, struct video_data *frame) {}
+static void cmio_output_raw_video(void *param, struct video_data *frame)
+{
+	blog(LOG_INFO, "%s", "CMIO raw_video");
+}
 
-static void cmio_output_raw_audio(void *data, struct audio_data *frames) {}
+static void cmio_output_raw_audio(void *data, struct audio_data *frames)
+{
+	blog(LOG_INFO, "%s", "CMIO raw_audio");
+}
 
 static void cmio_output_update(void *data, obs_data_t *settings) {}
 
@@ -135,7 +148,7 @@ bool obs_module_load(void)
 		properties_dialog->setVisible(!properties_dialog->isVisible());
 		blog(LOG_INFO, "%s", "CMIO dialog visible");
 		obs_output_start(cmio_out);
-		blog(LOG_INFO, "%s", "CMIO output started");
+		blog(LOG_INFO, "%s", "CMIO obs_output_start called");
 	};
 
 	action->connect(action, &QAction::triggered, menu_cb);
