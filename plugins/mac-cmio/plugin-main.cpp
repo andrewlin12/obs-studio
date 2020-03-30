@@ -1,4 +1,5 @@
 #include <obs-module.h>
+#include <media-io/video-io.h>
 #include <QMainWindow>
 #include <QAction>
 #include <QDialog>
@@ -8,6 +9,8 @@
 struct virtual_out_data {
 	obs_output_t *output = nullptr;
 	pthread_mutex_t mutex;
+	int width = 0;
+	int height = 0;
 	int64_t last_video_ts = 0;
 };
 
@@ -75,6 +78,13 @@ static bool cmio_output_start(void *data)
 {
 	blog(LOG_INFO, "%s", "CMIO start");
 	virtual_out_data *out_data = (virtual_out_data *)data;
+	video_t *video = obs_output_video(out_data->output);
+	blog(LOG_INFO, "CMIO start: Video Format - %s",
+	     get_video_format_name(video_output_get_format(video)));
+
+	out_data->width = (int32_t)obs_output_get_width(out_data->output);
+	out_data->height = (int32_t)obs_output_get_height(out_data->output);
+
 	if (out_data) {
 		obs_output_begin_data_capture(out_data->output, 0);
 		blog(LOG_INFO, "%s", "CMIO output_begin_data_capture called");
