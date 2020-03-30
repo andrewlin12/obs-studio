@@ -1,5 +1,7 @@
 project(mac-cmio)
 
+set(CMAKE_PREFIX_PATH "${QTDIR}")
+
 find_library(COREMEDIA CoreMedia)
 find_library(COREMEDIAIO CoreMediaIO)
 find_library(IOKIT IOKit)
@@ -10,6 +12,9 @@ find_library(COREFOUNDATION CoreFoundation)
 find_library(IOSURF IOSurface)
 find_library(COCOA Cocoa)
 
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Widgets REQUIRED)
+
 include_directories(${COREMEDIA}
                     ${COREMEDIAIO}
                     ${IOKIT}
@@ -19,6 +24,7 @@ include_directories(${COREMEDIA}
                     ${COREFOUNDATION}
                     ${IOSURF}
                     ${COCOA}
+                    "${CMAKE_SOURCE_DIR}/UI/obs-frontend-api"
                     ./CoreAudio/PublicUtility/
                     ./CoreMediaIO/DeviceAbstractionLayer/Devices/DP/Base/
                     ./CoreMediaIO/DeviceAbstractionLayer/Devices/DP/Properties/
@@ -270,7 +276,7 @@ set(mac-cmio_SOURCES
     ./CoreMediaIO/PublicUtility/IOVideoAssistant/CMIO_IOVA_Assistance.cpp
     ./CoreMediaIO/PublicUtility/POSIXThreadAssistant/CMIO_PTA_CFMachPortThread.cpp
     ./CoreMediaIO/PublicUtility/POSIXThreadAssistant/CMIO_PTA_NotificationPortThread.cpp
-    ./plugin-main.c
+    ./plugin-main.cpp
 )
 
 set_source_files_properties(./CoreMediaIO/DeviceAbstractionLayer/Devices/Sample/Assistant/MIG/CMIODPASample.defs
@@ -280,18 +286,25 @@ set_source_files_properties(./CoreMediaIO/DeviceAbstractionLayer/Devices/Sample/
 
 add_library(mac-cmio MODULE
 	${mac-cmio_SOURCES}
-	${mac-cmio_HEADERS})
+	${mac-cmio_HEADERS}
+	${Qt5Core_INCLUDES}
+	${Qt5Widgets_INCLUDES}
+    )
 
 target_link_libraries(mac-cmio
 	libobs
-  ${COREMEDIA}
-  ${COREMEDIAIO}
-  ${IOKIT}
-  ${COREVIDEO}
+    obs-frontend-api
+    ${COREMEDIA}
+    ${COREMEDIAIO}
+    ${IOKIT}
+    ${COREVIDEO}
 	${COREAUDIO}
 	${AUDIOUNIT}
 	${COREFOUNDATION}
 	${IOSURF}
-	${COCOA})
+	${COCOA}
+	Qt5::Core
+	Qt5::Widgets
+    )
 
-install_obs_plugin(mac-cmio)
+install_obs_plugin_with_data(mac-cmio data)
