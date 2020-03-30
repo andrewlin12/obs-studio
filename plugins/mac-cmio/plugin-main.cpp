@@ -44,18 +44,17 @@ static const char *cmio_output_getname(void *unused)
 
 static void cmio_output_stop(void *data, uint64_t ts)
 {
-	printf("CMIO stop\n");
+	blog(LOG_INFO, "%s", "CMIO stop");
 }
 
 static void cmio_output_destroy(void *data)
 {
-	printf("CMIO destroy\n");
+	blog(LOG_INFO, "%s", "CMIO destroy");
 }
 
 static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 {
 	blog(LOG_INFO, "%s", "CMIO create");
-	printf("CMIO create\n");
 
 	virtual_out_data *data =
 		(virtual_out_data *)bzalloc(sizeof(struct virtual_out_data));
@@ -74,13 +73,13 @@ static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 
 static bool cmio_output_start(void *data)
 {
-	printf("CMIO start\n");
+	blog(LOG_INFO, "%s", "CMIO start");
 	return true;
 }
 
 static obs_properties_t *cmio_output_properties(void *unused)
 {
-	printf("CMIO properties\n");
+	blog(LOG_INFO, "%s", "CMIO properties");
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
@@ -93,14 +92,29 @@ static void cmio_output_raw_audio(void *data, struct audio_data *frames) {}
 
 static void cmio_output_update(void *data, obs_data_t *settings) {}
 
+struct obs_output_info cmio_output_info = {
+	.id = "cmio_output",
+	.flags = OBS_OUTPUT_AUDIO | OBS_OUTPUT_VIDEO,
+	.get_name = cmio_output_getname,
+	.create = cmio_output_create,
+	.destroy = cmio_output_destroy,
+	.get_properties = cmio_output_properties,
+	.raw_audio = cmio_output_raw_audio,
+	.raw_video = cmio_output_raw_video,
+	.start = cmio_output_start,
+	.stop = cmio_output_stop,
+	.update = cmio_output_update,
+};
+
 QDialog *properties_dialog;
+obs_output *cmio_out;
 bool obs_module_load(void)
 {
 	blog(LOG_INFO, "%s", "CMIO obj_module_load");
 	obs_register_output(&cmio_output_info);
 
 	obs_data_t *settings = obs_data_create();
-	obs_output *cmio_out =
+	cmio_out =
 		obs_output_create("cmio_output", "CMIOOutput", settings, NULL);
 	obs_data_release(settings);
 	signal_handler_t *handler = obs_output_get_signal_handler(cmio_out);
@@ -117,7 +131,11 @@ bool obs_module_load(void)
 	obs_frontend_pop_ui_translation();
 
 	auto menu_cb = [] {
+		blog(LOG_INFO, "%s", "CMIO tools menu item pressed");
 		properties_dialog->setVisible(!properties_dialog->isVisible());
+		blog(LOG_INFO, "%s", "CMIO dialog visible");
+		obs_output_start(cmio_out);
+		blog(LOG_INFO, "%s", "CMIO output started");
 	};
 
 	action->connect(action, &QAction::triggered, menu_cb);
@@ -125,16 +143,3 @@ bool obs_module_load(void)
 	blog(LOG_INFO, "%s", "CMIO obj_module_load complete");
 	return true;
 }
-struct obs_output_info cmio_output_info = {
-	.id = "cmio_output",
-	.flags = OBS_OUTPUT_AUDIO | OBS_OUTPUT_VIDEO,
-	.get_name = cmio_output_getname,
-	.create = cmio_output_create,
-	.destroy = cmio_output_destroy,
-	.get_properties = cmio_output_properties,
-	.raw_audio = cmio_output_raw_audio,
-	.raw_video = cmio_output_raw_video,
-	.start = cmio_output_start,
-	.stop = cmio_output_stop,
-	.update = cmio_output_update,
-};
