@@ -12,14 +12,17 @@
 
 using namespace CMIO::DPA::Sample;
 
-MIGInterface* MIGInterface::sInstance = nullptr;
+MIGInterface *MIGInterface::sInstance = nullptr;
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleConnect()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleConnect(mach_port_t servicePort, pid_t client, mach_port_t* clientSendPort)
+kern_return_t CMIODPASampleConnect(mach_port_t servicePort, pid_t client,
+				   mach_port_t *clientSendPort)
 {
-    return MIGInterface::Instance()->Connect(servicePort, client, clientSendPort);
+	printf("CMIO MIGInterface - Connect\n");
+	return MIGInterface::Instance()->Connect(servicePort, client,
+						 clientSendPort);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -27,133 +30,215 @@ kern_return_t CMIODPASampleConnect(mach_port_t servicePort, pid_t client, mach_p
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 kern_return_t CMIODPASampleDisconnect(mach_port_t client)
 {
+	printf("CMIO MIGInterface - Disconnect\n");
 	return MIGInterface::Instance()->Disconnect(client);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleGetDeviceStates()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleGetDeviceStates(mach_port_t client, mach_port_t messagePort, DeviceState** deviceStates, mach_msg_type_number_t* length)
+kern_return_t CMIODPASampleGetDeviceStates(mach_port_t client,
+					   mach_port_t messagePort,
+					   DeviceState **deviceStates,
+					   mach_msg_type_number_t *length)
 {
-	return MIGInterface::Instance()->GetDeviceStates(client, messagePort, deviceStates, length);
+	printf("CMIO MIGInterface - GetDeviceStates\n");
+	return MIGInterface::Instance()->GetDeviceStates(client, messagePort,
+							 deviceStates, length);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleGetProperties()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleGetProperties(mach_port_t client, UInt64 guid, mach_port_t messagePort, UInt64 time, CMIOObjectPropertyAddress matchAddress, CMIO::PropertyAddress** addresses, mach_msg_type_number_t* length)
+kern_return_t CMIODPASampleGetProperties(mach_port_t client, UInt64 guid,
+					 mach_port_t messagePort, UInt64 time,
+					 CMIOObjectPropertyAddress matchAddress,
+					 CMIO::PropertyAddress **addresses,
+					 mach_msg_type_number_t *length)
 {
-	return MIGInterface::Instance()->GetProperties(client, guid, messagePort, time, matchAddress, addresses, length);
+	printf("CMIO MIGInterface - GetProperties\n");
+	return MIGInterface::Instance()->GetProperties(client, guid,
+						       messagePort, time,
+						       matchAddress, addresses,
+						       length);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleGetPropertyState()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleGetPropertyState(mach_port_t client, UInt64 guid, CMIOObjectPropertyAddress address, UInt8* qualifier, mach_msg_type_number_t qualifierLength, UInt8** data, mach_msg_type_number_t* length)
+kern_return_t CMIODPASampleGetPropertyState(
+	mach_port_t client, UInt64 guid, CMIOObjectPropertyAddress address,
+	UInt8 *qualifier, mach_msg_type_number_t qualifierLength, UInt8 **data,
+	mach_msg_type_number_t *length)
 {
-	return MIGInterface::Instance()->GetPropertyState(client, guid, address, qualifier, qualifierLength, data, length);
+	printf("CMIO MIGInterface - GetPropertyState\n");
+	return MIGInterface::Instance()->GetPropertyState(client, guid, address,
+							  qualifier,
+							  qualifierLength, data,
+							  length);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleSetPropertyState()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleSetPropertyState(mach_port_t client, UInt64 guid, UInt32 sendChangedNotifications, CMIOObjectPropertyAddress address, UInt8* qualifier, mach_msg_type_number_t qualifierLength, Byte* data, mach_msg_type_number_t length)
+kern_return_t CMIODPASampleSetPropertyState(
+	mach_port_t client, UInt64 guid, UInt32 sendChangedNotifications,
+	CMIOObjectPropertyAddress address, UInt8 *qualifier,
+	mach_msg_type_number_t qualifierLength, Byte *data,
+	mach_msg_type_number_t length)
 {
-	return MIGInterface::Instance()->SetPropertyState(client, guid, sendChangedNotifications, address, qualifier, qualifierLength, data, length);
+	printf("CMIO MIGInterface - SetPropertyState\n");
+	return MIGInterface::Instance()->SetPropertyState(
+		client, guid, sendChangedNotifications, address, qualifier,
+		qualifierLength, data, length);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleGetControls()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleGetControls(mach_port_t client, UInt64 guid, mach_port_t messagePort, UInt64 time, ControlChanges** controlChanges, mach_msg_type_number_t* length)
+kern_return_t CMIODPASampleGetControls(mach_port_t client, UInt64 guid,
+				       mach_port_t messagePort, UInt64 time,
+				       ControlChanges **controlChanges,
+				       mach_msg_type_number_t *length)
 {
-	return MIGInterface::Instance()->GetControls(client, guid, messagePort, time, controlChanges, length);
+	printf("CMIO MIGInterface - GetControls\n");
+	return MIGInterface::Instance()->GetControls(
+		client, guid, messagePort, time, controlChanges, length);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleSetControl()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleSetControl(mach_port_t client, UInt64 guid, UInt32 controlID, UInt32 value, UInt32* newValue)
+kern_return_t CMIODPASampleSetControl(mach_port_t client, UInt64 guid,
+				      UInt32 controlID, UInt32 value,
+				      UInt32 *newValue)
 {
-	return MIGInterface::Instance()->SetControl(client, guid, controlID, value, newValue);
+	printf("CMIO MIGInterface - SetControl\n");
+	return MIGInterface::Instance()->SetControl(client, guid, controlID,
+						    value, newValue);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleProcessRS422Command()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleProcessRS422Command(mach_port_t client, UInt64 guid, ByteArray512 command, mach_msg_type_number_t commandLength, UInt32 responseLength, UInt32 *responseUsed, UInt8** response, mach_msg_type_number_t *responseCount)
+kern_return_t CMIODPASampleProcessRS422Command(
+	mach_port_t client, UInt64 guid, ByteArray512 command,
+	mach_msg_type_number_t commandLength, UInt32 responseLength,
+	UInt32 *responseUsed, UInt8 **response,
+	mach_msg_type_number_t *responseCount)
 {
-	return MIGInterface::Instance()->ProcessRS422Command(client, guid, command, commandLength, responseLength, responseUsed, response, responseCount);
+	printf("CMIO MIGInterface - ProcessRS422Command\n");
+	return MIGInterface::Instance()->ProcessRS422Command(
+		client, guid, command, commandLength, responseLength,
+		responseUsed, response, responseCount);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleStartStream()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleStartStream(mach_port_t client, UInt64 guid, mach_port_t messagePort, CMIOObjectPropertyScope scope, CMIOObjectPropertyElement element)
+kern_return_t CMIODPASampleStartStream(mach_port_t client, UInt64 guid,
+				       mach_port_t messagePort,
+				       CMIOObjectPropertyScope scope,
+				       CMIOObjectPropertyElement element)
 {
-	return MIGInterface::Instance()->StartStream(client, guid, messagePort, scope, element);
+	printf("CMIO MIGInterface - StartStream\n");
+	return MIGInterface::Instance()->StartStream(client, guid, messagePort,
+						     scope, element);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleStopStream()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleStopStream(mach_port_t client, UInt64 guid, CMIOObjectPropertyScope scope, CMIOObjectPropertyElement element)
+kern_return_t CMIODPASampleStopStream(mach_port_t client, UInt64 guid,
+				      CMIOObjectPropertyScope scope,
+				      CMIOObjectPropertyElement element)
 {
-	return MIGInterface::Instance()->StopStream(client, guid, scope, element);
+	printf("CMIO MIGInterface - StopStream\n");
+	return MIGInterface::Instance()->StopStream(client, guid, scope,
+						    element);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleGetControlList()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleGetControlList(mach_port_t client, UInt64 guid, UInt8** data, mach_msg_type_number_t* length)
+kern_return_t CMIODPASampleGetControlList(mach_port_t client, UInt64 guid,
+					  UInt8 **data,
+					  mach_msg_type_number_t *length)
 {
-	return MIGInterface::Instance()->GetControlList(client, guid, data, length);
+	printf("CMIO MIGInterface - GetControlList\n");
+	return MIGInterface::Instance()->GetControlList(client, guid, data,
+							length);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleStartDeckThreads()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleStartDeckThreads(mach_port_t client, UInt64 guid, CMIOObjectPropertyScope scope, CMIOObjectPropertyElement element)
+kern_return_t CMIODPASampleStartDeckThreads(mach_port_t client, UInt64 guid,
+					    CMIOObjectPropertyScope scope,
+					    CMIOObjectPropertyElement element)
 {
-	return MIGInterface::Instance()->StartDeckThreads(client, guid, scope, element);
+	printf("CMIO MIGInterface - StartDeckThreads\n");
+	return MIGInterface::Instance()->StartDeckThreads(client, guid, scope,
+							  element);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleStopDeckThreads()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleStopDeckThreads(mach_port_t client, UInt64 guid, CMIOObjectPropertyScope scope, CMIOObjectPropertyElement element)
+kern_return_t CMIODPASampleStopDeckThreads(mach_port_t client, UInt64 guid,
+					   CMIOObjectPropertyScope scope,
+					   CMIOObjectPropertyElement element)
 {
-	return MIGInterface::Instance()->StopDeckThreads(client, guid, scope, element);
+	printf("CMIO MIGInterface - StopDeckThreads\n");
+	return MIGInterface::Instance()->StopDeckThreads(client, guid, scope,
+							 element);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleDeckPlay()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleDeckPlay(mach_port_t client, UInt64 guid, CMIOObjectPropertyScope scope, CMIOObjectPropertyElement element)
+kern_return_t CMIODPASampleDeckPlay(mach_port_t client, UInt64 guid,
+				    CMIOObjectPropertyScope scope,
+				    CMIOObjectPropertyElement element)
 {
+	printf("CMIO MIGInterface - DeckPlay\n");
 	return MIGInterface::Instance()->DeckPlay(client, guid, scope, element);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleDeckStop()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleDeckStop(mach_port_t client, UInt64 guid, CMIOObjectPropertyScope scope, CMIOObjectPropertyElement element)
+kern_return_t CMIODPASampleDeckStop(mach_port_t client, UInt64 guid,
+				    CMIOObjectPropertyScope scope,
+				    CMIOObjectPropertyElement element)
 {
+	printf("CMIO MIGInterface - DeckStop\n");
 	return MIGInterface::Instance()->DeckStop(client, guid, scope, element);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleDeckPlay()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleDeckJog(mach_port_t client, UInt64 guid, CMIOObjectPropertyScope scope, CMIOObjectPropertyElement element, SInt32 speed)
+kern_return_t CMIODPASampleDeckJog(mach_port_t client, UInt64 guid,
+				   CMIOObjectPropertyScope scope,
+				   CMIOObjectPropertyElement element,
+				   SInt32 speed)
 {
-	return MIGInterface::Instance()->DeckJog(client, guid, scope, element, speed);
+	printf("CMIO MIGInterface - DeckJog\n");
+	return MIGInterface::Instance()->DeckJog(client, guid, scope, element,
+						 speed);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CMIODPASampleDeckPlay()
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kern_return_t CMIODPASampleDeckCueTo(mach_port_t client, UInt64 guid, CMIOObjectPropertyScope scope, CMIOObjectPropertyElement element, Float64 requestedTimecode, UInt32 playOnCue)
+kern_return_t CMIODPASampleDeckCueTo(mach_port_t client, UInt64 guid,
+				     CMIOObjectPropertyScope scope,
+				     CMIOObjectPropertyElement element,
+				     Float64 requestedTimecode,
+				     UInt32 playOnCue)
 {
-	return MIGInterface::Instance()->DeckCueTo(client, guid, scope, element, requestedTimecode, playOnCue);
+	printf("CMIO MIGInterface - DeckCueTo\n");
+	return MIGInterface::Instance()->DeckCueTo(
+		client, guid, scope, element, requestedTimecode, playOnCue);
 }

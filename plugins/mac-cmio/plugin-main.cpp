@@ -29,10 +29,7 @@ static void nv12_to_y422(uint8_t *in, int width, int height, uint8_t **out,
 			 int *out_length)
 {
 	*out_length = width * height * 2;
-	blog(LOG_INFO, "out_length: %d", *out_length);
-
 	uint8_t *frame = (uint8_t *)bzalloc(*out_length);
-	blog(LOG_INFO, "out bzalloc: %p", *frame);
 
 	uint8_t *y = in;
 	uint8_t *uv = y + (width * height);
@@ -78,14 +75,14 @@ extern struct obs_output_info cmio_output_info;
 
 static const char *cmio_output_getname(void *unused)
 {
-	blog(LOG_INFO, "%s", "CMIO getname");
+	printf("%s", "CMIO getname\n");
 	UNUSED_PARAMETER(unused);
 	return "CMIO Virtual Camera";
 }
 
 static void cmio_output_stop(void *data, uint64_t ts)
 {
-	blog(LOG_INFO, "%s", "CMIO stop");
+	printf("%s", "CMIO stop\n");
 	virtual_out_data *out_data = (virtual_out_data *)data;
 	obs_output_end_data_capture(out_data->output);
 	output_running = false;
@@ -94,7 +91,7 @@ static void cmio_output_stop(void *data, uint64_t ts)
 
 static void cmio_output_destroy(void *data)
 {
-	blog(LOG_INFO, "%s", "CMIO destroy");
+	printf("%s", "CMIO destroy\n");
 }
 
 boolean_t MessagesAndNotifications(mach_msg_header_t *request,
@@ -113,41 +110,21 @@ boolean_t MessagesAndNotifications(mach_msg_header_t *request,
 	return processed;
 }
 
+CMIO::DPA::Sample::Server::VCamDevice *device;
+pthread_t mach_msg_thread;
 mach_port_t portSet;
 void *runloop(void *vargp)
 {
-	// Service incoming messages from the clients and notifications which were signed up for
-	while (true) {
-		(void)mach_msg_server(MessagesAndNotifications, 8192, portSet,
-				      MACH_MSG_OPTION_NONE);
-	}
-}
-
-CMIO::DPA::Sample::Server::VCamDevice *device;
-pthread_t mach_msg_thread;
-static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
-{
-	blog(LOG_INFO, "CMIO cmio_output_create");
-	virtual_out_data *data =
-		(virtual_out_data *)bzalloc(sizeof(struct virtual_out_data));
-
-	data->output = output;
-	pthread_mutex_init_value(&data->mutex);
-	if (pthread_mutex_init(&data->mutex, NULL) != 0) {
-		virtual_output_destroy(data);
-		return NULL;
-	}
-
 	// Check in with the bootstrap port under the agreed upon name to get the servicePort with receive rights
 	mach_port_t servicePort;
 	name_t serviceName = "com.apple.cmio.DPA.SampleVCam";
 	kern_return_t err =
 		bootstrap_check_in(bootstrap_port, serviceName, &servicePort);
 	if (BOOTSTRAP_SUCCESS != err) {
-		blog(LOG_INFO, "CMIO: bootstrap_check_in() failed: 0x%x", err);
+		printf("CMIO: bootstrap_check_in() failed: 0x%x\n", err);
 		exit(43);
 	}
-	blog(LOG_INFO, "CMIO: bootstrap_check_in() succeeded!");
+	printf("CMIO: bootstrap_check_in() succeeded!\n");
 
 	// Create a port set to hold the service port, and each client's port
 	portSet = CMIO::DPA::Sample::Server::VCamAssistant::Instance()
@@ -158,12 +135,32 @@ static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 		     "CMIO: Unable to add service port to port set: 0x%x", err);
 		exit(2);
 	}
-	blog(LOG_INFO, "CMIO: Successfully added service port to port set");
+	printf("CMIO: Successfully added service port to port set\n");
 
 	device = (CMIO::DPA::Sample::Server::VCamDevice *)
 			 CMIO::DPA::Sample::Server::VCamAssistant::Instance()
 				 ->GetDevice();
-	blog(LOG_INFO, "CMIO: Created VCamDevice");
+	printf("CMIO: Created VCamDevice\n");
+
+	// Service incoming messages from the clients and notifications which were signed up for
+	while (true) {
+		(void)mach_msg_server(MessagesAndNotifications, 8192, portSet,
+				      MACH_MSG_OPTION_NONE);
+	}
+}
+
+static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
+{
+	printf("CMIO cmio_output_create\n");
+	virtual_out_data *data =
+		(virtual_out_data *)bzalloc(sizeof(struct virtual_out_data));
+
+	data->output = output;
+	pthread_mutex_init_value(&data->mutex);
+	if (pthread_mutex_init(&data->mutex, NULL) != 0) {
+		virtual_output_destroy(data);
+		return NULL;
+	}
 
 	pthread_create(&mach_msg_thread, NULL, runloop, NULL);
 
@@ -173,20 +170,20 @@ static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 
 static bool cmio_output_start(void *data)
 {
-	blog(LOG_INFO, "%s", "CMIO start");
+	printf("%s", "CMIO start\n");
 	virtual_out_data *out_data = (virtual_out_data *)data;
 	video_t *video = obs_output_video(out_data->output);
-	blog(LOG_INFO, "CMIO start: Video Format - %s",
-	     get_video_format_name(video_output_get_format(video)));
+	printf("CMIO start: Video Format - %s\n",
+	       get_video_format_name(video_output_get_format(video)));
 
 	out_data->width = (int32_t)obs_output_get_width(out_data->output);
 	out_data->height = (int32_t)obs_output_get_height(out_data->output);
-	blog(LOG_INFO, "CMIO start: Video Size - %d x %d", out_data->width,
-	     out_data->height);
+	printf("CMIO start: Video Size - %d x %d\n", out_data->width,
+	       out_data->height);
 
 	if (out_data) {
 		obs_output_begin_data_capture(out_data->output, 0);
-		blog(LOG_INFO, "%s", "CMIO output_begin_data_capture called");
+		printf("%s", "CMIO output_begin_data_capture called\n");
 		return true;
 	}
 
@@ -195,7 +192,7 @@ static bool cmio_output_start(void *data)
 
 static obs_properties_t *cmio_output_properties(void *unused)
 {
-	blog(LOG_INFO, "%s", "CMIO properties");
+	printf("%s", "CMIO properties\n");
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
@@ -204,7 +201,6 @@ static obs_properties_t *cmio_output_properties(void *unused)
 
 static void cmio_output_raw_video(void *param, struct video_data *frame)
 {
-	blog(LOG_INFO, "CMIO raw_video - timestamp %lld", frame->timestamp);
 	printf("CMIO raw_video - timestamp %lld\n", frame->timestamp);
 	uint8_t *converted;
 	int converted_length;
@@ -215,7 +211,7 @@ static void cmio_output_raw_video(void *param, struct video_data *frame)
 
 static void cmio_output_raw_audio(void *data, struct audio_data *frames)
 {
-	// blog(LOG_INFO, "%s", "CMIO raw_audio");
+	// printf("%s", "CMIO raw_audio");
 }
 
 static void cmio_output_update(void *data, obs_data_t *settings) {}
@@ -236,9 +232,10 @@ struct obs_output_info cmio_output_info = {
 
 QDialog *properties_dialog;
 obs_output *cmio_out;
+QAction *action;
 bool obs_module_load(void)
 {
-	blog(LOG_INFO, "%s", "CMIO obj_module_load");
+	printf("%s", "CMIO obj_module_load");
 	obs_register_output(&cmio_output_info);
 
 	obs_data_t *settings = obs_data_create();
@@ -249,25 +246,25 @@ bool obs_module_load(void)
 	signal_handler_add(handler,
 			   "void output_stop(string msg, bool opening)");
 
-	QMainWindow *main_window =
-		(QMainWindow *)obs_frontend_get_main_window();
-	QAction *action = (QAction *)obs_frontend_add_tools_menu_qaction(
+	// QMainWindow *main_window =
+	//	(QMainWindow *)obs_frontend_get_main_window();
+	action = (QAction *)obs_frontend_add_tools_menu_qaction(
 		obs_module_text("ToolsMenu_CMIOOutput"));
 
-	obs_frontend_push_ui_translation(obs_module_get_string);
-	properties_dialog = new QDialog(main_window);
-	obs_frontend_pop_ui_translation();
+	// obs_frontend_push_ui_translation(obs_module_get_string);
+	// properties_dialog = new QDialog(main_window);
+	// obs_frontend_pop_ui_translation();
 
 	auto menu_cb = [] {
-		blog(LOG_INFO, "%s", "CMIO tools menu item pressed");
-		properties_dialog->setVisible(!properties_dialog->isVisible());
-		blog(LOG_INFO, "%s", "CMIO dialog visible");
+		printf("%s", "CMIO tools menu item pressed");
+		// properties_dialog->setVisible(!properties_dialog->isVisible());
+		// printf("%s", "CMIO dialog visible");
 		obs_output_start(cmio_out);
-		blog(LOG_INFO, "%s", "CMIO obs_output_start called");
+		printf("%s", "CMIO obs_output_start called");
 	};
 
 	action->connect(action, &QAction::triggered, menu_cb);
 
-	blog(LOG_INFO, "%s", "CMIO obj_module_load complete");
+	printf("%s", "CMIO obj_module_load complete");
 	return true;
 }
