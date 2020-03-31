@@ -6,6 +6,11 @@
 #include <obs-frontend-api.h>
 #include <util/threading.h>
 
+#include <servers/bootstrap.h>
+#include <mach/mach.h>
+
+#include "CMIO_DPA_Sample_Server_VCamDevice.h"
+
 struct virtual_out_data {
 	obs_output_t *output = nullptr;
 	pthread_mutex_t mutex;
@@ -33,26 +38,10 @@ static void nv12_to_y422(uint8_t *in, int width, int height, uint8_t **out,
 		for (int c = 0; c < width; c += 2) {
 			int i = r * width + c;
 			int uv_i = ((r / 2) * width) + c;
-			// U0
-			frame[i * 2] = (uv[uv_i] & 0x01) +
-				       ((uv[uv_i] >> 1) & 0x02) +
-				       ((uv[uv_i] >> 2) & 0x04) +
-				       ((uv[uv_i] >> 3) & 0x08) +
-				       ((uv[uv_i + 1] << 4) & 0x10) +
-				       ((uv[uv_i + 1] << 3) & 0x20) +
-				       ((uv[uv_i + 1] << 2) & 0x40) +
-				       ((uv[uv_i + 1] << 1) & 0x80);
-			// V0
-			frame[i * 2 + 2] = ((uv[uv_i] >> 1) & 0x01) +
-					   ((uv[uv_i] >> 2) & 0x02) +
-					   ((uv[uv_i] >> 3) & 0x04) +
-					   ((uv[uv_i] >> 4) & 0x08) +
-					   ((uv[uv_i + 1] << 3) & 0x10) +
-					   ((uv[uv_i + 1] << 2) & 0x20) +
-					   ((uv[uv_i + 1] << 1) & 0x40) +
-					   (uv[uv_i + 1] & 0x80);
 
+			// U0
 			frame[i * 2] = uv[uv_i];
+			// V0ut i
 			frame[i * 2 + 2] = uv[uv_i + 1];
 
 			// Y0
@@ -106,42 +95,53 @@ static void cmio_output_destroy(void *data)
 	blog(LOG_INFO, "%s", "CMIO destroy");
 }
 
+mach_port_t mPortSet;
+CMIO::DPA::Sample::Server::VCamDevice *device;
 static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 {
-	/*
-	FILE *test_file =
-		fopen("/Users/andrewlin/Downloads/test_nv12.yuv", "r");
-	uint8_t *frame = new uint8_t[1382400];
-	fread(frame, 1, 1382400, test_file);
-
-	uint8_t *converted;
-	int converted_length;
-	nv12_to_y422(frame, 1280, 720, &converted, &converted_length);
-	blog(LOG_INFO, "%s", "CMIO create");
-
-	FILE *fp;
-	fp = fopen("/Users/andrewlin/Downloads/converted_nv12_to_y422.yuv",
-		   "w");
-	blog(LOG_INFO, "CMIO raw_video - fp %lld", fp);
-	fwrite(converted, 1, converted_length, fp);
-	fclose(fp);
-
-	exit(0);
-	*/
-
+	blog(LOG_INFO, "CMIO cmio_output_create");
 	virtual_out_data *data =
 		(virtual_out_data *)bzalloc(sizeof(struct virtual_out_data));
 
 	data->output = output;
 	pthread_mutex_init_value(&data->mutex);
-	if (pthread_mutex_init(&data->mutex, NULL) == 0) {
-		UNUSED_PARAMETER(settings);
-		return data;
-	} else {
+	if (pthread_mutex_init(&data->mutex, NULL) != 0) {
 		virtual_output_destroy(data);
+		return NULL;
 	}
 
-	return NULL;
+	// Check in with the bootstrap port under the agreed upon name to get the servicePort with receive rights
+	mach_port_t servicePort;
+	name_t serviceName = "com.apple.cmio.DPA.SampleVCam";
+	kern_return_t err =
+		bootstrap_check_in(bootstrap_port, serviceName, &servicePort);
+	if (BOOTSTRAP_SUCCESS != err) {
+		blog(LOG_INFO, "CMIO: bootstrap_check_in() failed: 0x%x", err);
+		exit(43);
+	}
+	blog(LOG_INFO, "CMIO: bootstrap_check_in() succeeded!");
+
+	// Create a port set to hold the service port, and each client's port
+	err = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_PORT_SET,
+				 &mPortSet);
+	if (err != 0) {
+		blog(LOG_INFO, "CMIO: Unable to create port set: 0x%x", err);
+		exit(2);
+	}
+
+	err = mach_port_move_member(mach_task_self(), servicePort, mPortSet);
+	if (KERN_SUCCESS != err) {
+		blog(LOG_INFO,
+		     "CMIO: Unable to add service port to port set: 0x%x", err);
+		exit(2);
+	}
+	blog(LOG_INFO, "CMIO: Successfully added service port to port set");
+
+	device = new CMIO::DPA::Sample::Server::VCamDevice();
+	blog(LOG_INFO, "CMIO: Created VCamDevice");
+
+	UNUSED_PARAMETER(settings);
+	return data;
 }
 
 static bool cmio_output_start(void *data)
@@ -175,38 +175,20 @@ static obs_properties_t *cmio_output_properties(void *unused)
 	return props;
 }
 
-bool wrote_frame = false;
-
 static void cmio_output_raw_video(void *param, struct video_data *frame)
 {
 	blog(LOG_INFO, "CMIO raw_video - timestamp %lld", frame->timestamp);
-	if (!wrote_frame) {
-		for (int i = 0; i < MAX_AV_PLANES; i++) {
-			blog(LOG_INFO, "frame %d linesize %d", i,
-			     frame->linesize[i]);
-		}
-
-		uint8_t *converted;
-		int converted_length;
-		nv12_to_y422(frame->data[0], 1280, 720, &converted,
-			     &converted_length);
-
-		FILE *fp;
-		fp = fopen(
-			"/Users/andrewlin/Downloads/converted_nv12_to_y422.yuv",
-			"w");
-		blog(LOG_INFO, "CMIO raw_video - fp %lld", fp);
-		fwrite(converted, 1, converted_length, fp);
-		fclose(fp);
-
-		bfree(converted);
-		wrote_frame = true;
-	}
+	printf("CMIO raw_video - timestamp %lld\n", frame->timestamp);
+	uint8_t *converted;
+	int converted_length;
+	nv12_to_y422(frame->data[0], 1280, 720, &converted, &converted_length);
+	device->EmitFrame(device, converted);
+	bfree(converted);
 }
 
 static void cmio_output_raw_audio(void *data, struct audio_data *frames)
 {
-	blog(LOG_INFO, "%s", "CMIO raw_audio");
+	// blog(LOG_INFO, "%s", "CMIO raw_audio");
 }
 
 static void cmio_output_update(void *data, obs_data_t *settings) {}
