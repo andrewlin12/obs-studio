@@ -9,6 +9,8 @@
 #include <servers/bootstrap.h>
 #include <mach/mach.h>
 
+#include "CMIODPASampleServer.h"
+#include "CMIO_DPA_Sample_Server_VCamAssistant.h"
 #include "CMIO_DPA_Sample_Server_VCamDevice.h"
 
 struct virtual_out_data {
@@ -95,8 +97,34 @@ static void cmio_output_destroy(void *data)
 	blog(LOG_INFO, "%s", "CMIO destroy");
 }
 
-mach_port_t mPortSet;
+boolean_t MessagesAndNotifications(mach_msg_header_t *request,
+				   mach_msg_header_t *reply)
+{
+	// Invoke the MIG created CMIODPASampleServer() to see if this is one of the client messages it handles
+	boolean_t processed = CMIODPASampleServer(request, reply);
+
+	// If CMIODPASampleServer() did not process the message see if it is a MACH_NOTIFY_NO_SENDERS notification
+	if (not processed and MACH_NOTIFY_NO_SENDERS == request->msgh_id) {
+		CMIO::DPA::Sample::Server::VCamAssistant::Instance()->ClientDied(
+			request->msgh_local_port);
+		processed = true;
+	}
+
+	return processed;
+}
+
+mach_port_t portSet;
+void *runloop(void *vargp)
+{
+	// Service incoming messages from the clients and notifications which were signed up for
+	while (true) {
+		(void)mach_msg_server(MessagesAndNotifications, 8192, portSet,
+				      MACH_MSG_OPTION_NONE);
+	}
+}
+
 CMIO::DPA::Sample::Server::VCamDevice *device;
+pthread_t mach_msg_thread;
 static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 {
 	blog(LOG_INFO, "CMIO cmio_output_create");
@@ -122,14 +150,9 @@ static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 	blog(LOG_INFO, "CMIO: bootstrap_check_in() succeeded!");
 
 	// Create a port set to hold the service port, and each client's port
-	err = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_PORT_SET,
-				 &mPortSet);
-	if (err != 0) {
-		blog(LOG_INFO, "CMIO: Unable to create port set: 0x%x", err);
-		exit(2);
-	}
-
-	err = mach_port_move_member(mach_task_self(), servicePort, mPortSet);
+	portSet = CMIO::DPA::Sample::Server::VCamAssistant::Instance()
+			  ->GetPortSet();
+	err = mach_port_move_member(mach_task_self(), servicePort, portSet);
 	if (KERN_SUCCESS != err) {
 		blog(LOG_INFO,
 		     "CMIO: Unable to add service port to port set: 0x%x", err);
@@ -137,8 +160,12 @@ static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 	}
 	blog(LOG_INFO, "CMIO: Successfully added service port to port set");
 
-	device = new CMIO::DPA::Sample::Server::VCamDevice();
+	device = (CMIO::DPA::Sample::Server::VCamDevice *)
+			 CMIO::DPA::Sample::Server::VCamAssistant::Instance()
+				 ->GetDevice();
 	blog(LOG_INFO, "CMIO: Created VCamDevice");
+
+	pthread_create(&mach_msg_thread, NULL, runloop, NULL);
 
 	UNUSED_PARAMETER(settings);
 	return data;
