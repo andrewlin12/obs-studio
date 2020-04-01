@@ -19,12 +19,10 @@ struct virtual_out_data {
 	pthread_mutex_t mutex;
 	int width = 0;
 	int height = 0;
-	int64_t last_video_ts = 0;
 };
 
 obs_output_t *virtual_out;
 bool output_running = false;
-bool audio_running = false;
 
 static void nv12_to_y422(uint8_t *in, int width, int height, uint8_t **out,
 			 int *out_length)
@@ -41,7 +39,7 @@ static void nv12_to_y422(uint8_t *in, int width, int height, uint8_t **out,
 
 			// U0
 			frame[i * 2] = uv[uv_i];
-			// V0ut i
+			// V0
 			frame[i * 2 + 2] = uv[uv_i + 1];
 
 			// Y0
@@ -57,7 +55,6 @@ static void nv12_to_y422(uint8_t *in, int width, int height, uint8_t **out,
 static void virtual_output_destroy(void *data)
 {
 	output_running = false;
-	audio_running = false;
 	virtual_out_data *out_data = (virtual_out_data *)data;
 	if (out_data) {
 		pthread_mutex_destroy(&out_data->mutex);
@@ -87,7 +84,6 @@ static void cmio_output_stop(void *data, uint64_t ts)
 	virtual_out_data *out_data = (virtual_out_data *)data;
 	obs_output_end_data_capture(out_data->output);
 	output_running = false;
-	audio_running = false;
 }
 
 static void cmio_output_destroy(void *data)
@@ -187,6 +183,7 @@ static bool cmio_output_start(void *data)
 	if (out_data) {
 		obs_output_begin_data_capture(out_data->output, 0);
 		printf("%s", "CMIO output_begin_data_capture called\n");
+		output_running = true;
 		return true;
 	}
 
@@ -204,7 +201,7 @@ static obs_properties_t *cmio_output_properties(void *unused)
 
 static void cmio_output_raw_video(void *param, struct video_data *frame)
 {
-	printf("CMIO raw_video - timestamp %lld\n", frame->timestamp);
+	// printf("CMIO raw_video - timestamp %lld\n", frame->timestamp);
 	uint8_t *converted;
 	int converted_length;
 	nv12_to_y422(frame->data[0], 1280, 720, &converted, &converted_length);
@@ -235,7 +232,9 @@ struct obs_output_info cmio_output_info = {
 
 QDialog *properties_dialog;
 obs_output *cmio_out;
-QAction *action;
+QAction *start_action;
+QAction *stop_action;
+bool cmio_started;
 bool obs_module_load(void)
 {
 	printf("%s", "CMIO obj_module_load");
@@ -249,24 +248,33 @@ bool obs_module_load(void)
 	signal_handler_add(handler,
 			   "void output_stop(string msg, bool opening)");
 
-	// QMainWindow *main_window =
-	//	(QMainWindow *)obs_frontend_get_main_window();
-	action = (QAction *)obs_frontend_add_tools_menu_qaction(
-		obs_module_text("ToolsMenu_CMIOOutput"));
+	start_action = (QAction *)obs_frontend_add_tools_menu_qaction(
+		obs_module_text("ToolsMenu_CMIOOutputStart"));
+	stop_action = (QAction *)obs_frontend_add_tools_menu_qaction(
+		obs_module_text("ToolsMenu_CMIOOutputStop"));
+	stop_action->setVisible(false);
 
-	// obs_frontend_push_ui_translation(obs_module_get_string);
-	// properties_dialog = new QDialog(main_window);
-	// obs_frontend_pop_ui_translation();
-
-	auto menu_cb = [] {
-		printf("%s", "CMIO tools menu item pressed");
-		// properties_dialog->setVisible(!properties_dialog->isVisible());
-		// printf("%s", "CMIO dialog visible");
-		obs_output_start(cmio_out);
-		printf("%s", "CMIO obs_output_start called");
+	auto start_cb = [] {
+		if (!output_running) {
+			printf("%s", "CMIO start menu item pressed\n");
+			obs_output_start(cmio_out);
+			printf("%s", "CMIO obs_output_start called\n");
+			start_action->setVisible(false);
+			stop_action->setVisible(true);
+		}
 	};
 
-	action->connect(action, &QAction::triggered, menu_cb);
+	auto stop_cb = [] {
+		if (output_running) {
+			printf("%s", "CMIO stop menu item pressed\n");
+			obs_output_stop(cmio_out);
+			printf("%s", "CMIO obs_output_start called\n");
+			start_action->setVisible(true);
+			stop_action->setVisible(false);
+		}
+	};
+	start_action->connect(start_action, &QAction::triggered, start_cb);
+	stop_action->connect(stop_action, &QAction::triggered, stop_cb);
 
 	printf("%s", "CMIO obj_module_load complete");
 	return true;
