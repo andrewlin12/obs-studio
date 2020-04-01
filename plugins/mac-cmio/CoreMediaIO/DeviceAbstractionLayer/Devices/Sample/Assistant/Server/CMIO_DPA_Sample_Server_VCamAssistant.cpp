@@ -53,6 +53,13 @@ Device *VCamAssistant::GetDevice()
 	return *mDevices.begin();
 }
 
+void VCamAssistant::SetStartStopHandlers(std::function<void()> &start_lambda,
+					 std::function<void()> &stop_lambda)
+{
+	mStartLambda = start_lambda;
+	mStopLambda = stop_lambda;
+}
+
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // CreateDevices()
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -84,6 +91,32 @@ void VCamAssistant::CreateDevices()
 	}
 }
 
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// StartStream()
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+kern_return_t VCamAssistant::StartStream(Client client, UInt64 guid,
+					 mach_port_t messagePort,
+					 CMIOObjectPropertyScope scope,
+					 CMIOObjectPropertyElement element)
+{
+	kern_return_t kern_return = Assistant::StartStream(
+		client, guid, messagePort, scope, element);
+	mStartLambda();
+	return kern_return;
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// StopStream()
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+kern_return_t VCamAssistant::StopStream(Client client, UInt64 guid,
+					CMIOObjectPropertyScope scope,
+					CMIOObjectPropertyElement element)
+{
+	kern_return_t kern_return =
+		Assistant::StopStream(client, guid, scope, element);
+	mStopLambda();
+	return kern_return;
+}
 }
 }
 }

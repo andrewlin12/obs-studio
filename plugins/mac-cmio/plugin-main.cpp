@@ -23,6 +23,32 @@ struct virtual_out_data {
 
 obs_output_t *virtual_out;
 bool output_running = false;
+CMIO::DPA::Sample::Server::VCamDevice *device;
+pthread_t mach_msg_thread;
+mach_port_t portSet;
+obs_output *cmio_out;
+bool cmio_started;
+QAction *start_action;
+QAction *stop_action;
+std::function<void()> start_cb = [] {
+	if (!output_running) {
+		printf("%s", "CMIO start menu item pressed\n");
+		obs_output_start(cmio_out);
+		printf("%s", "CMIO obs_output_start called\n");
+		start_action->setVisible(false);
+		stop_action->setVisible(true);
+	}
+};
+
+std::function<void()> stop_cb = [] {
+	if (output_running) {
+		printf("%s", "CMIO stop menu item pressed\n");
+		obs_output_stop(cmio_out);
+		printf("%s", "CMIO obs_output_start called\n");
+		start_action->setVisible(true);
+		stop_action->setVisible(false);
+	}
+};
 
 static void nv12_to_y422(uint8_t *in, int width, int height, uint8_t **out,
 			 int *out_length)
@@ -89,6 +115,7 @@ static void cmio_output_stop(void *data, uint64_t ts)
 static void cmio_output_destroy(void *data)
 {
 	printf("%s", "CMIO destroy\n");
+	virtual_output_destroy(data);
 }
 
 boolean_t MessagesAndNotifications(mach_msg_header_t *request,
@@ -109,9 +136,6 @@ boolean_t MessagesAndNotifications(mach_msg_header_t *request,
 	return processed;
 }
 
-CMIO::DPA::Sample::Server::VCamDevice *device;
-pthread_t mach_msg_thread;
-mach_port_t portSet;
 void *runloop(void *vargp)
 {
 	// Check in with the bootstrap port under the agreed upon name to get the servicePort with receive rights
@@ -139,6 +163,8 @@ void *runloop(void *vargp)
 	device = (CMIO::DPA::Sample::Server::VCamDevice *)
 			 CMIO::DPA::Sample::Server::VCamAssistant::Instance()
 				 ->GetDevice();
+	CMIO::DPA::Sample::Server::VCamAssistant::Instance()
+		->SetStartStopHandlers(start_cb, stop_cb);
 	printf("CMIO: Created VCamDevice\n");
 
 	// Service incoming messages from the clients and notifications which were signed up for
@@ -230,11 +256,6 @@ struct obs_output_info cmio_output_info = {
 	.update = cmio_output_update,
 };
 
-QDialog *properties_dialog;
-obs_output *cmio_out;
-QAction *start_action;
-QAction *stop_action;
-bool cmio_started;
 bool obs_module_load(void)
 {
 	printf("%s", "CMIO obj_module_load");
@@ -254,25 +275,6 @@ bool obs_module_load(void)
 		obs_module_text("ToolsMenu_CMIOOutputStop"));
 	stop_action->setVisible(false);
 
-	auto start_cb = [] {
-		if (!output_running) {
-			printf("%s", "CMIO start menu item pressed\n");
-			obs_output_start(cmio_out);
-			printf("%s", "CMIO obs_output_start called\n");
-			start_action->setVisible(false);
-			stop_action->setVisible(true);
-		}
-	};
-
-	auto stop_cb = [] {
-		if (output_running) {
-			printf("%s", "CMIO stop menu item pressed\n");
-			obs_output_stop(cmio_out);
-			printf("%s", "CMIO obs_output_start called\n");
-			start_action->setVisible(true);
-			stop_action->setVisible(false);
-		}
-	};
 	start_action->connect(start_action, &QAction::triggered, start_cb);
 	stop_action->connect(stop_action, &QAction::triggered, stop_cb);
 
