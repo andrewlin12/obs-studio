@@ -126,11 +126,13 @@ boolean_t MessagesAndNotifications(mach_msg_header_t *request,
 
 	// If CMIODPASampleServer() did not process the message see if it is a MACH_NOTIFY_NO_SENDERS notification
 	if (not processed and MACH_NOTIFY_NO_SENDERS == request->msgh_id) {
+		/* TODO: This seems to crash things, should try to figure out why
 		dispatch_async(dispatch_get_main_queue(), ^{
 			CMIO::DPA::Sample::Server::VCamAssistant::Instance()
 				->ClientDied(request->msgh_local_port);
 		});
 		processed = true;
+		*/
 	}
 
 	return processed;
