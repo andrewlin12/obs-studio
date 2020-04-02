@@ -63,28 +63,42 @@ std::function<void()> stop_cb = [] {
 	}
 };
 
-static void nv12_to_y422(uint8_t *in, int width, int height, uint8_t **out,
+static void nv12_to_y422(uint8_t *in, int in_width, int in_height,
+			 int out_width, int out_height, uint8_t **out,
 			 int *out_length)
 {
-	*out_length = width * height * 2;
+	*out_length = out_width * out_height * 2;
 	uint8_t *frame = (uint8_t *)bzalloc(*out_length);
 
 	uint8_t *y = in;
-	uint8_t *uv = y + (width * height);
-	for (int r = 0; r < height; r += 1) {
-		for (int c = 0; c < width; c += 2) {
-			int i = r * width + c;
-			int uv_i = ((r / 2) * width) + c;
+	uint8_t *uv = y + (in_width * in_height);
+	for (int r = 0; r < out_height; r += 1) {
+		for (int c = 0; c < out_width; c += 2) {
+			int out_i = r * out_width + c;
+
+			if (r >= in_height || c >= in_width) {
+				// U0
+				frame[out_i * 2] = 127;
+				// V0
+				frame[out_i * 2 + 2] = 127;
+				// Y0
+				frame[out_i * 2 + 1] = 0;
+				// Y1
+				frame[out_i * 2 + 3] = 0;
+				continue;
+			}
+
+			int i = r * in_width + c;
+			int uv_i = ((r / 2) * in_width) + c;
 
 			// U0
-			frame[i * 2] = uv[uv_i];
+			frame[out_i * 2] = uv[uv_i];
 			// V0
-			frame[i * 2 + 2] = uv[uv_i + 1];
-
+			frame[out_i * 2 + 2] = uv[uv_i + 1];
 			// Y0
-			frame[i * 2 + 1] = y[i];
+			frame[out_i * 2 + 1] = y[i];
 			// Y1
-			frame[i * 2 + 3] = y[i + 1];
+			frame[out_i * 2 + 3] = y[i + 1];
 		}
 	}
 
@@ -240,12 +254,14 @@ static obs_properties_t *cmio_output_properties(void *unused)
 	return props;
 }
 
-static void cmio_output_raw_video(void *param, struct video_data *frame)
+static void cmio_output_raw_video(void *data, struct video_data *frame)
 {
+	virtual_out_data *out_data = (virtual_out_data *)data;
 	// printf("CMIO raw_video - timestamp %lld\n", frame->timestamp);
 	uint8_t *converted;
 	int converted_length;
-	nv12_to_y422(frame->data[0], 1280, 720, &converted, &converted_length);
+	nv12_to_y422(frame->data[0], out_data->width, out_data->height, 1280,
+		     720, &converted, &converted_length);
 	device->EmitFrame(device, converted);
 	bfree(converted);
 }
