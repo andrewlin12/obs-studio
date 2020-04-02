@@ -1,8 +1,5 @@
 #include <obs-module.h>
 #include <media-io/video-io.h>
-#include <QMainWindow>
-#include <QAction>
-#include <QDialog>
 #include <obs-frontend-api.h>
 #include <util/threading.h>
 
@@ -13,6 +10,14 @@
 #include "CMIODPASampleServer.h"
 #include "CMIO_DPA_Sample_Server_VCamAssistant.h"
 #include "CMIO_DPA_Sample_Server_VCamDevice.h"
+
+#define PLUGIN_USE_QT 0
+
+#if PLUGIN_USE_QT
+#include <QMainWindow>
+#include <QAction>
+#include <QDialog>
+#endif
 
 struct virtual_out_data {
 	obs_output_t *output = nullptr;
@@ -28,15 +33,21 @@ pthread_t mach_msg_thread;
 mach_port_t portSet;
 obs_output *cmio_out;
 bool cmio_started;
+
+#if PLUGIN_USE_QT
 QAction *start_action;
 QAction *stop_action;
+#endif
+
 std::function<void()> start_cb = [] {
 	if (!output_running) {
 		printf("%s", "CMIO start menu item pressed\n");
 		obs_output_start(cmio_out);
 		printf("%s", "CMIO obs_output_start called\n");
+#if PLUGIN_USE_QT
 		start_action->setVisible(false);
 		stop_action->setVisible(true);
+#endif
 	}
 };
 
@@ -45,8 +56,10 @@ std::function<void()> stop_cb = [] {
 		printf("%s", "CMIO stop menu item pressed\n");
 		obs_output_stop(cmio_out);
 		printf("%s", "CMIO obs_output_start called\n");
+#if PLUGIN_USE_QT
 		start_action->setVisible(true);
 		stop_action->setVisible(false);
+#endif
 	}
 };
 
@@ -271,14 +284,15 @@ bool obs_module_load(void)
 	signal_handler_add(handler,
 			   "void output_stop(string msg, bool opening)");
 
+#if PLUGIN_USE_QT
 	start_action = (QAction *)obs_frontend_add_tools_menu_qaction(
 		obs_module_text("ToolsMenu_CMIOOutputStart"));
 	stop_action = (QAction *)obs_frontend_add_tools_menu_qaction(
 		obs_module_text("ToolsMenu_CMIOOutputStop"));
 	stop_action->setVisible(false);
-
 	start_action->connect(start_action, &QAction::triggered, start_cb);
 	stop_action->connect(stop_action, &QAction::triggered, stop_cb);
+#endif
 
 	printf("%s", "CMIO obj_module_load complete");
 	return true;

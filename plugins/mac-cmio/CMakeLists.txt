@@ -1,6 +1,6 @@
 project(mac-cmio)
 
-set(CMAKE_PREFIX_PATH "${QTDIR}")
+#set(CMAKE_PREFIX_PATH "${QTDIR}")
 
 find_library(COREMEDIA CoreMedia)
 find_library(COREMEDIAIO CoreMediaIO)
@@ -12,8 +12,8 @@ find_library(COREFOUNDATION CoreFoundation)
 find_library(IOSURF IOSurface)
 find_library(COCOA Cocoa)
 
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Widgets REQUIRED)
+#find_package(Qt5Core REQUIRED)
+#find_package(Qt5Widgets REQUIRED)
 
 include_directories(${COREMEDIA}
                     ${COREMEDIAIO}
@@ -287,8 +287,8 @@ set_source_files_properties(./CoreMediaIO/DeviceAbstractionLayer/Devices/Sample/
 add_library(mac-cmio MODULE
 	${mac-cmio_SOURCES}
 	${mac-cmio_HEADERS}
-	${Qt5Core_INCLUDES}
-	${Qt5Widgets_INCLUDES}
+#	${Qt5Core_INCLUDES}
+#	${Qt5Widgets_INCLUDES}
     )
 
 target_link_libraries(mac-cmio
@@ -303,8 +303,8 @@ target_link_libraries(mac-cmio
 	${COREFOUNDATION}
 	${IOSURF}
 	${COCOA}
-	Qt5::Core
-	Qt5::Widgets
+#	Qt5::Core
+#	Qt5::Widgets
     )
 
 install_obs_plugin_with_data(mac-cmio data)
