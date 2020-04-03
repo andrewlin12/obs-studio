@@ -196,7 +196,6 @@ void *runloop(void *vargp)
 		exit(2);
 	}
 
-	info("LOG_INFO=%d, LOG_WARN=%d, LOG_ZZZ=%d", LOG_INFO, LOG_WARNING, LOG_ZZZ);
 	info("Successfully added service port to port set");
 
 	device = (CMIO::DPA::Sample::Server::VCamDevice *)
