@@ -2,6 +2,7 @@
 #include <media-io/video-io.h>
 #include <obs-frontend-api.h>
 #include <util/threading.h>
+#include <util/base.h>
 
 #include <dispatch/dispatch.h>
 #include <servers/bootstrap.h>
@@ -18,6 +19,14 @@
 #include <QAction>
 #include <QDialog>
 #endif
+
+#define do_log(level, format, ...)                  \
+	blog(level, "[CMIO] " format, ##__VA_ARGS__)
+
+// 200 and 300 are from base.h but those values get
+// redefined from syslog.h, so hard code them.
+#define warn(format, ...) do_log(200, format, ##__VA_ARGS__)
+#define info(format, ...) do_log(300, format, ##__VA_ARGS__)
 
 struct virtual_out_data {
 	obs_output_t *output = nullptr;
@@ -41,9 +50,9 @@ QAction *stop_action;
 
 std::function<void()> start_cb = [] {
 	if (!output_running) {
-		printf("%s", "CMIO start menu item pressed\n");
+		info("%s", "start menu item pressed");
 		obs_output_start(cmio_out);
-		printf("%s", "CMIO obs_output_start called\n");
+		info("%s", "obs_output_start called");
 #if PLUGIN_USE_QT
 		start_action->setVisible(false);
 		stop_action->setVisible(true);
@@ -53,9 +62,9 @@ std::function<void()> start_cb = [] {
 
 std::function<void()> stop_cb = [] {
 	if (output_running) {
-		printf("%s", "CMIO stop menu item pressed\n");
+		info("%s", "stop menu item pressed");
 		obs_output_stop(cmio_out);
-		printf("%s", "CMIO obs_output_start called\n");
+		info("%s", "obs_output_start called");
 #if PLUGIN_USE_QT
 		start_action->setVisible(true);
 		stop_action->setVisible(false);
@@ -126,14 +135,14 @@ extern struct obs_output_info cmio_output_info;
 
 static const char *cmio_output_getname(void *unused)
 {
-	printf("%s", "CMIO getname\n");
+	info("cmio_output_getname");
 	UNUSED_PARAMETER(unused);
 	return "CMIO Virtual Camera";
 }
 
 static void cmio_output_stop(void *data, uint64_t ts)
 {
-	printf("%s", "CMIO stop\n");
+	info("cmio_output_stop");
 	virtual_out_data *out_data = (virtual_out_data *)data;
 	obs_output_end_data_capture(out_data->output);
 	output_running = false;
@@ -141,7 +150,7 @@ static void cmio_output_stop(void *data, uint64_t ts)
 
 static void cmio_output_destroy(void *data)
 {
-	printf("%s", "CMIO destroy\n");
+	info("cmio_output_destroy");
 	virtual_output_destroy(data);
 }
 
@@ -173,28 +182,29 @@ void *runloop(void *vargp)
 	kern_return_t err =
 		bootstrap_check_in(bootstrap_port, serviceName, &servicePort);
 	if (BOOTSTRAP_SUCCESS != err) {
-		printf("CMIO: bootstrap_check_in() failed: 0x%x\n", err);
+		warn("bootstrap_check_in() failed: 0x%x", err);
 		exit(43);
 	}
-	printf("CMIO: bootstrap_check_in() succeeded!\n");
+	info("bootstrap_check_in() succeeded!");
 
 	// Create a port set to hold the service port, and each client's port
 	portSet = CMIO::DPA::Sample::Server::VCamAssistant::Instance()
 			  ->GetPortSet();
 	err = mach_port_move_member(mach_task_self(), servicePort, portSet);
 	if (KERN_SUCCESS != err) {
-		blog(LOG_INFO,
-		     "CMIO: Unable to add service port to port set: 0x%x", err);
+		info("Unable to add service port to port set: 0x%x", err);
 		exit(2);
 	}
-	printf("CMIO: Successfully added service port to port set\n");
+
+	info("LOG_INFO=%d, LOG_WARN=%d, LOG_ZZZ=%d", LOG_INFO, LOG_WARNING, LOG_ZZZ);
+	info("Successfully added service port to port set");
 
 	device = (CMIO::DPA::Sample::Server::VCamDevice *)
 			 CMIO::DPA::Sample::Server::VCamAssistant::Instance()
 				 ->GetDevice();
 	CMIO::DPA::Sample::Server::VCamAssistant::Instance()
 		->SetStartStopHandlers(start_cb, stop_cb);
-	printf("CMIO: Created VCamDevice\n");
+	info("Created VCamDevice");
 
 	// Service incoming messages from the clients and notifications which were signed up for
 	while (true) {
@@ -205,7 +215,7 @@ void *runloop(void *vargp)
 
 static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 {
-	printf("CMIO cmio_output_create\n");
+	info("cmio_output_create");
 	virtual_out_data *data =
 		(virtual_out_data *)bzalloc(sizeof(struct virtual_out_data));
 
@@ -224,20 +234,20 @@ static void *cmio_output_create(obs_data_t *settings, obs_output_t *output)
 
 static bool cmio_output_start(void *data)
 {
-	printf("%s", "CMIO start\n");
+	info("cmio_output_start");
 	virtual_out_data *out_data = (virtual_out_data *)data;
 	video_t *video = obs_output_video(out_data->output);
-	printf("CMIO start: Video Format - %s\n",
+	info("start: Video Format - %s",
 	       get_video_format_name(video_output_get_format(video)));
 
 	out_data->width = (int32_t)obs_output_get_width(out_data->output);
 	out_data->height = (int32_t)obs_output_get_height(out_data->output);
-	printf("CMIO start: Video Size - %d x %d\n", out_data->width,
+	info("start: Video Size - %d x %d", out_data->width,
 	       out_data->height);
 
 	if (out_data) {
 		obs_output_begin_data_capture(out_data->output, 0);
-		printf("%s", "CMIO output_begin_data_capture called\n");
+		info("obs_output_begin_data_capture called");
 		output_running = true;
 		return true;
 	}
@@ -247,7 +257,7 @@ static bool cmio_output_start(void *data)
 
 static obs_properties_t *cmio_output_properties(void *unused)
 {
-	printf("%s", "CMIO properties\n");
+	info("cmio_output_properties");
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
@@ -257,7 +267,7 @@ static obs_properties_t *cmio_output_properties(void *unused)
 static void cmio_output_raw_video(void *data, struct video_data *frame)
 {
 	virtual_out_data *out_data = (virtual_out_data *)data;
-	// printf("CMIO raw_video - timestamp %lld\n", frame->timestamp);
+	// info("raw_video - timestamp %lld", frame->timestamp);
 	uint8_t *converted;
 	int converted_length;
 	nv12_to_y422(frame->data[0], out_data->width, out_data->height, 1280,
@@ -268,7 +278,7 @@ static void cmio_output_raw_video(void *data, struct video_data *frame)
 
 static void cmio_output_raw_audio(void *data, struct audio_data *frames)
 {
-	// printf("%s", "CMIO raw_audio");
+	// info("%s", "cmio_output_raw_audio");
 }
 
 static void cmio_output_update(void *data, obs_data_t *settings) {}
@@ -289,7 +299,7 @@ struct obs_output_info cmio_output_info = {
 
 bool obs_module_load(void)
 {
-	printf("%s", "CMIO obj_module_load");
+	info("obs_module_load");
 	obs_register_output(&cmio_output_info);
 
 	obs_data_t *settings = obs_data_create();
@@ -310,6 +320,6 @@ bool obs_module_load(void)
 	stop_action->connect(stop_action, &QAction::triggered, stop_cb);
 #endif
 
-	printf("%s", "CMIO obj_module_load complete");
+	info("obs_module_load complete");
 	return true;
 }
