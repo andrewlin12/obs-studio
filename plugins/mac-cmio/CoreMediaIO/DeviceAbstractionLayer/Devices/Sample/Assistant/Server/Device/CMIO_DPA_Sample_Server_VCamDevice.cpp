@@ -14,6 +14,7 @@
 
 // Internal Includes
 #include "CMIO_DPA_Sample_Server_VCamInputStream.h"
+#include "CAHostTimeBase.h"
 
 namespace CMIO {
 namespace DPA {
@@ -79,7 +80,9 @@ void *VCamDevice::EmitFrame(void *device, uint8_t *framebuffer)
 
 	++vcamDevice->mFrameIndex;
 
-	UInt64 vbiTime = vcamDevice->mInputStream->GetTimecode() * 1000000000.0;
+	// Hack because it seems that vcamDevice->mInputStream->GetTimecode() is always 0
+	UInt64 vbiTime = CAHostTimeBase::GetCurrentTimeInNanos();
+	//printf("vbiTime=%llu\n", vbiTime);
 	vcamDevice->mInputStream->FrameArrived(vcamDevice->mFrameSize,
 					       framebuffer, vbiTime);
 	return NULL;
